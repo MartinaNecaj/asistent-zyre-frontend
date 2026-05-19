@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Asistent Zyre</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f7f7f5;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── LOGIN ── */
+#login-screen{position:fixed;inset:0;background:#f7f7f5;display:flex;align-items:center;justify-content:center;z-index:100}
+.login-box{background:#fff;border:0.5px solid #e0e0da;border-radius:16px;padding:40px 36px;width:340px;text-align:center}
+.login-box h2{font-size:18px;font-weight:500;color:#1a1a1a;margin-bottom:6px}
+.login-box p{font-size:13px;color:#aaa;margin-bottom:24px}
+.login-box input{width:100%;border:0.5px solid #ddd;border-radius:8px;padding:10px 14px;font-size:14px;margin-bottom:12px;outline:none;font-family:inherit;background:#fafaf8}
+.login-box input:focus{border-color:#aaa}
+.login-btn{width:100%;background:#1a1a1a;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;cursor:pointer;font-family:inherit}
+.login-btn:hover{background:#333}
+.login-err{font-size:12px;color:#c00;margin-top:8px;min-height:16px}
+
+/* ── APP ── */
+#app{display:none;flex-direction:column;height:100vh}
+header{background:#fff;border-bottom:0.5px solid #e0e0da;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:32px;height:32px;border-radius:8px;background:#1a1a1a;display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:1.8}
+h1{font-size:15px;font-weight:500;color:#1a1a1a}
+.sub{font-size:12px;color:#888;margin-top:1px}
+.hdr-btns{display:flex;gap:8px}
+.hdr-btn{font-size:12px;color:#666;background:none;border:0.5px solid #ddd;border-radius:6px;padding:5px 12px;cursor:pointer}
+.hdr-btn:hover{background:#f2f2f0}
+.main{display:flex;flex:1;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{width:260px;background:#fff;border-right:0.5px solid #e0e0da;display:flex;flex-direction:column;flex-shrink:0}
+.sb-hdr{padding:12px 14px;border-bottom:0.5px solid #e8e8e4;font-size:12px;font-weight:500;color:#555;display:flex;justify-content:space-between;align-items:center}
+.upload-zone{margin:12px;border:1px dashed #d0d0c8;border-radius:10px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .15s;background:#fafaf8}
+.upload-zone:hover,.upload-zone.drag{border-color:#999;background:#f2f2ee}
+.upload-zone p{font-size:12px;color:#888;line-height:1.6}
+.uz-icon{font-size:20px;margin-bottom:4px}
+.file-list{flex:1;overflow-y:auto;padding:6px 10px}
+.fi{display:flex;align-items:flex-start;gap:8px;padding:8px;border-radius:8px;margin-bottom:4px;background:#f7f7f5;cursor:pointer;transition:background .1s;border:1.5px solid transparent}
+.fi:hover{background:#f0f0ec}
+.fi.selected{border-color:#1a1a1a;background:#f0f0ec}
+.ficon{font-size:16px;flex-shrink:0;margin-top:1px}
+.fname{font-size:12px;color:#333;word-break:break-word;line-height:1.4;flex:1}
+.fmeta{font-size:11px;color:#aaa;margin-top:2px}
+.fdel{background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;flex-shrink:0;padding:0}
+.fdel:hover{color:#e05}
+.pbar{height:3px;background:#e8e8e4;border-radius:2px;margin-top:5px;overflow:hidden}
+.pfill{height:100%;background:#1a1a1a;border-radius:2px;transition:width .4s}
+.sb-foot{padding:10px 14px;border-top:0.5px solid #e8e8e4;font-size:11px;color:#bbb;text-align:center}
+.sel-hint{font-size:11px;color:#888;padding:4px 14px 8px;text-align:center}
+
+/* ── CHAT ── */
+.chat-col{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#chat-area{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+.msg{display:flex;gap:10px}
+.msg.user{flex-direction:row-reverse}
+.av{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500}
+.msg.assistant .av{background:#1a1a1a;color:#fff}
+.msg.user .av{background:#e8e8e4;color:#555}
+.bubble{max-width:78%;padding:10px 14px;border-radius:12px;font-size:14px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.msg.assistant .bubble{background:#fff;border:0.5px solid #e8e8e4;color:#1a1a1a;border-radius:4px 12px 12px 12px}
+.msg.user .bubble{background:#1a1a1a;color:#fff;border-radius:12px 4px 12px 12px}
+.typing{display:flex;gap:4px;align-items:center}
+.typing span{width:6px;height:6px;border-radius:50%;background:#bbb;animation:bou 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s}
+.typing span:nth-child(3){animation-delay:.4s}
+@keyframes bou{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
+.quick-actions{display:flex;gap:8px;flex-wrap:wrap;padding:0 20px 8px;flex-shrink:0}
+.qb{font-size:12px;color:#555;background:#fff;border:0.5px solid #ddd;border-radius:20px;padding:5px 13px;cursor:pointer;white-space:nowrap}
+.qb:hover{background:#f0f0ec;border-color:#bbb}
+#input-area{background:#fff;border-top:0.5px solid #e0e0da;padding:12px 20px;display:flex;gap:10px;align-items:flex-end;flex-shrink:0}
+#user-input{flex:1;border:0.5px solid #ddd;border-radius:10px;padding:10px 14px;font-size:14px;resize:none;max-height:120px;font-family:inherit;line-height:1.5;outline:none;background:#fafaf8;color:#1a1a1a}
+#user-input:focus{border-color:#aaa}
+#user-input::placeholder{color:#aaa}
+#send-btn{width:38px;height:38px;border-radius:10px;background:#1a1a1a;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#send-btn:hover{background:#333}
+#send-btn:disabled{background:#ccc;cursor:default}
+#send-btn svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2}
+.welcome{text-align:center;padding:50px 20px;color:#999;font-size:14px;line-height:1.9}
+.welcome strong{color:#444;font-weight:500;display:block;margin-bottom:8px;font-size:15px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <h2>Asistent Zyre</h2>
+    <p>Identifikohuni për të vazhduar</p>
+    <input type="text" id="l-user" placeholder="Emri i përdoruesit" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <input type="password" id="l-pass" placeholder="Fjalëkalimi" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <button class="login-btn" onclick="doLogin()">Hyr</button>
+    <div class="login-err" id="l-err"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="logo">
+      <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+      <div><h1>Asistent Zyre</h1><div class="sub">AI · Shqip · Baza e të Dhënave</div></div>
+    </div>
+    <div class="hdr-btns">
+      <button class="hdr-btn" onclick="clearChat()">Pastro bisedën</button>
+      <button class="hdr-btn" onclick="logout()">Dil</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sb-hdr">
+        <span>Baza e Dokumentave</span>
+        <span id="doc-count" style="font-size:11px;color:#aaa">0</span>
+      </div>
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('fi').click()"
+           ondragover="ev.preventDefault();this.classList.add('drag')"
+           ondragleave="this.classList.remove('drag')"
+           ondrop="this.classList.remove('drag');handleFiles(event.dataTransfer.files)">
+        <input type="file" id="fi" multiple
+               accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.bmp,.tiff,.webp,.gif"
+               onchange="handleFiles(this.files)" style="display:none"/>
+        <div class="uz-icon">⊕</div>
+        <p>Kliko ose tërhiq skedarë<br/><span style="color:#bbb">PDF · Word · Excel · PPT · Imazhe</span></p>
+      </div>
+      <div class="sel-hint">Kliko dokument për ta zgjedhur/çzgjedhur</div>
+      <div class="file-list" id="file-list"></div>
+      <div class="sb-foot">Dokumentat ruhen në bazën e të dhënave</div>
+    </div>
+
+    <!-- CHAT -->
+    <div class="chat-col">
+      <div id="chat-area">
+        <div class="welcome" id="welcome-msg">
+          <strong>Mirëdita! Jam Asistenti juaj i Zyrës.</strong>
+          Dokumentat tuaja janë duke u ngarkuar nga baza…<br/>
+          Zgjidhni dokumente specifike ose lini të gjithë aktiv.<br/>
+          Bëni çdo pyetje në shqip.
+        </div>
+      </div>
+      <div class="quick-actions">
+        <button class="qb" onclick="sq('Përmbledh dokumentat e zgjedhura.')">✦ Përmbledh</button>
+        <button class="qb" onclick="sq('Cilat janë pikat kryesore?')">✦ Pika kryesore</button>
+        <button class="qb" onclick="sq('Shkruaj një email profesional për:')">✦ Shkruaj email</button>
+        <button class="qb" onclick="sq('Bëj listë veprimesh nga dokumentat.')">✦ Lista veprimesh</button>
+      </div>
+      <div id="input-area">
+        <textarea id="user-input" rows="1" placeholder="Shkruaj pyetjen tuaj këtu…"
+                  onkeydown="hk(event)" oninput="ar(this)"></textarea>
+        <button id="send-btn" onclick="sendMsg()">
+          <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG — ndërroni këtë me URL-në tuaj të Render ──
+const API = 'https://asistent-zyre-backend.onrender.com';
+
+let token = localStorage.getItem('az_token') || '';
+let history = [], selectedDocs = new Set(), allDocs = [];
+let busy = false;
+
+// ── AUTH ──
+async function doLogin() {
+  const u = document.getElementById('l-user').value.trim();
+  const p = document.getElementById('l-pass').value;
+  document.getElementById('l-err').textContent = '';
+  try {
+    const r = await fetch(API + '/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
+    });
+    const d = await r.json();
+    if (!r.ok) { document.getElementById('l-err').textContent = d.error || 'Gabim'; return; }
+    token = d.token;
+    localStorage.setItem('az_token', token);
+    showApp();
+  } catch { document.getElementById('l-err').textContent = 'Nuk mund të lidhem me serverin.'; }
+}
+
+function logout() {
+  localStorage.removeItem('az_token');
+  token = '';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+function authHdr() { return { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }; }
+
+async function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  await loadDocs();
+}
+
+if (token) showApp();
+
+// ── DOCUMENTS ──
+async function loadDocs() {
+  try {
+    const r = await fetch(API + '/api/documents', { headers: authHdr() });
+    if (r.status === 401) { logout(); return; }
+    allDocs = await r.json();
+    renderFiles();
+  } catch (e) { console.error(e); }
+}
+
+function renderFiles() {
+  const list = document.getElementById('file-list');
+  list.innerHTML = '';
+  allDocs.forEach(d => {
+    const sel = selectedDocs.has(d.id);
+    const div = document.createElement('div');
+    div.className = 'fi' + (sel ? ' selected' : '');
+    div.onclick = () => toggleDoc(d.id);
+    div.innerHTML = `
+      <span class="ficon">${fIcon(d.file_type)}</span>
+      <div style="flex:1;min-width:0">
+        <div class="fname">${d.name}</div>
+        <div class="fmeta">${(d.size_chars||0).toLocaleString()} kar · ${fDate(d.created_at)}</div>
+      </div>
+      <button class="fdel" onclick="event.stopPropagation();delDoc('${d.id}')" title="Fshi">✕</button>`;
+    list.appendChild(div);
+  });
+  document.getElementById('doc-count').textContent = allDocs.length + ' skedarë';
+}
+
+function toggleDoc(id) {
+  if (selectedDocs.has(id)) selectedDocs.delete(id);
+  else selectedDocs.add(id);
+  renderFiles();
+}
+
+async function delDoc(id) {
+  if (!confirm('Fshi këtë dokument nga baza?')) return;
+  await fetch(API + '/api/documents/' + id, { method: 'DELETE', headers: authHdr() });
+  allDocs = allDocs.filter(d => d.id !== id);
+  selectedDocs.delete(id);
+  renderFiles();
+}
+
+function fIcon(t) {
+  if (t === 'pdf') return '📄';
+  if (['doc','docx'].includes(t)) return '📝';
+  if (['xls','xlsx'].includes(t)) return '📊';
+  if (['ppt','pptx'].includes(t)) return '📋';
+  return '🖼️';
+}
+function fDate(s) { return s ? new Date(s).toLocaleDateString('sq-AL') : ''; }
+
+// ── UPLOAD ──
+async function handleFiles(files) {
+  for (const file of files) {
+    const idx = allDocs.length;
+    // Show uploading placeholder
+    allDocs.unshift({ id: '_up_'+idx, name: file.name, file_type: file.name.split('.').pop(), size_chars: 0, created_at: new Date().toISOString(), _uploading: true });
+    renderFiles();
+
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const r = await fetch(API + '/api/upload', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: fd
+      });
+      const d = await r.json();
+      // Replace placeholder with real doc
+      const pi = allDocs.findIndex(x => x.id === '_up_'+idx);
+      if (pi >= 0 && d.id) allDocs[pi] = { id: d.id, name: d.name, file_type: file.name.split('.').pop(), size_chars: d.size_chars, created_at: new Date().toISOString() };
+    } catch (e) {
+      allDocs = allDocs.filter(x => x.id !== '_up_'+idx);
+    }
+    renderFiles();
+  }
+  document.getElementById('fi').value = '';
+}
+
+// ── CHAT ──
+function ar(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
+function hk(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } }
+function sq(t) { const el = document.getElementById('user-input'); el.value = t; el.focus(); ar(el); }
+
+function addMsg(role, txt) {
+  document.getElementById('welcome-msg')?.remove();
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  d.innerHTML = `<div class="av">${role === 'assistant' ? 'AI' : 'Ju'}</div><div class="bubble">${esc(txt)}</div>`;
+  document.getElementById('chat-area').appendChild(d);
+  document.getElementById('chat-area').scrollTop = 99999;
+}
+function showTyp() {
+  document.getElementById('welcome-msg')?.remove();
+  const d = document.createElement('div'); d.className = 'msg assistant'; d.id = 'typ';
+  d.innerHTML = `<div class="av">AI</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  document.getElementById('chat-area').appendChild(d);
+  document.getElementById('chat-area').scrollTop = 99999;
+}
+function remTyp() { document.getElementById('typ')?.remove(); }
+function esc(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+function clearChat() { history = []; document.getElementById('chat-area').innerHTML = '<div class="welcome" id="welcome-msg"><strong>Biseda u pastrua.</strong><br/>Gati për fillim të ri.</div>'; }
+
+async function sendMsg() {
+  const el = document.getElementById('user-input');
+  const text = el.value.trim();
+  if (!text || busy) return;
+  busy = true;
+  document.getElementById('send-btn').disabled = true;
+  el.value = ''; el.style.height = 'auto';
+  addMsg('user', text);
+  showTyp();
+
+  try {
+    const r = await fetch(API + '/api/chat', {
+      method: 'POST', headers: authHdr(),
+      body: JSON.stringify({
+        message: text,
+        history: history.slice(-10),
+        docIds: selectedDocs.size > 0 ? [...selectedDocs] : null
+      })
+    });
+    const d = await r.json();
+    remTyp();
+    const reply = d.reply || 'Gabim.';
+    addMsg('assistant', reply);
+    history.push({ role: 'user', content: text }, { role: 'assistant', content: reply });
+  } catch {
+    remTyp();
+    addMsg('assistant', 'Gabim lidhjeje me serverin. Provoni përsëri.');
+  }
+  busy = false;
+  document.getElementById('send-btn').disabled = false;
+}
+</script>
+</body>
+</html>
